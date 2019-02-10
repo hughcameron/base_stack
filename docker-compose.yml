@@ -1,0 +1,92 @@
+version: "3"
+
+networks:
+  web:
+    external: true
+
+services:
+  portainer:
+    image: portainer/portainer:latest
+    container_name: portainer
+    networks:
+      - web
+    ports:
+      - "9000:9000"
+    volumes:
+      - "${PORTAINER_DIR}:/data"
+      - "${DOCKER_SOCKET}:/var/run/docker.sock"
+    restart: always
+    labels:
+      traefik.enabled: "true"
+      traefik.frontend.rule: "Host:${DOMAIN}"
+      traefik.backend:  "port-service"
+      traefik.docker.network: "web"
+      traefik.port: "9000"
+
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    command: --api
+    volumes:
+      - ${DOCKER_SOCKET}:/var/run/docker.sock:ro
+      - "${TRAEFIK_DIR}/acme.json:/acme.json"
+      - "${TRAEFIK_DIR}/traefik.toml:/etc/traefik/traefik.toml"
+
+    labels:
+      traefik.enabled: "true"
+      traefik.sub.frontend.rule: "Host:monitor.${DOMAIN}"
+      traefik.backend: "monitor-service"
+      traefik.frontend.auth.basic: "${TRAEFIK_USERNAME}:${TRAEFIK_HTPASSWD}"
+      traefik.docker.network: "web"
+      traefik.port: "8080"
+    networks:
+      - web
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - CF_API_EMAIL=${CF_API_EMAIL}
+      - CF_API_KEY=${CF_API_KEY}
+    restart: unless-stopped
+
+  cloudflare-ddns:
+    image: joshuaavalon/cloudflare-ddns
+    environment:
+      - ZONE=${DOMAIN}
+      - HOST=${DOMAIN}
+      - EMAIL=${CF_API_EMAIL}
+      - API=${CF_API_KEY}
+      - TTL=1
+      - PROXY=true
+    container_name: cloudflare-ddns
+    restart: unless-stopped
+
+  drone:
+    volumes:
+      - "${DOCKER_SOCKET}:/var/run/docker.sock"
+      - "${DRONE_DIR}:/data"
+      - "${AIRFLOW_DIR}:/airflow"
+    environment:
+      - "DRONE_GITHUB_SERVER=https://github.com"
+      - "DRONE_GITHUB_CLIENT_ID=${DRONE_GITHUB_CLIENT_ID}"
+      - "DRONE_GITHUB_CLIENT_SECRET=${DRONE_GITHUB_CLIENT_SECRET}"
+      - "DRONE_GIT_ALWAYS_AUTH=false"
+      - "DRONE_USER_CREATE=username:${DRONE_GITHUB_USERNAME},admin:true"
+      - "DRONE_RUNNER_CAPACITY=2"
+      - "DRONE_SERVER_HOST=drone.${DOMAIN}"
+      - "DRONE_SERVER_PROTO=https"
+      - "DRONE_TLS_AUTOCERT=false"
+    labels:
+      traefik.enable: "true"
+      traefik.frontend.rule: "Host:drone.${DOMAIN}"
+      traefik.backend: "drone-service"
+      traefik.docker.network: "web"
+      traefik.port: "80"
+    networks:
+      - web
+    restart: always
+    container_name: drone
+    image: "drone/drone:1.0.0-rc.5"
