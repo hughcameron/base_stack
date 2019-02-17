@@ -13,7 +13,7 @@ services:
     ports:
       - "9000:9000"
     volumes:
-      - "${PORTAINER_DIR}:/data"
+      - "portainer_data:/data"
       - "${DOCKER_SOCKET}:/var/run/docker.sock"
     restart: always
     labels:
@@ -29,9 +29,8 @@ services:
     command: --api
     volumes:
       - ${DOCKER_SOCKET}:/var/run/docker.sock:ro
-      - "${TRAEFIK_DIR}/acme.json:/acme.json"
-      - "${TRAEFIK_DIR}/traefik.toml:/etc/traefik/traefik.toml"
-
+      - "traefik_data:/acme.json"
+      - "./traefik.toml:/etc/traefik/traefik.toml"
     labels:
       traefik.enabled: "true"
       traefik.sub.frontend.rule: "Host:monitor.${DOMAIN}"
@@ -67,8 +66,7 @@ services:
   drone:
     volumes:
       - "${DOCKER_SOCKET}:/var/run/docker.sock"
-      - "${DRONE_DIR}:/data"
-      - "${AIRFLOW_DIR}:/airflow"
+      - "drone_data:/data"
     environment:
       - "DRONE_GITHUB_SERVER=https://github.com"
       - "DRONE_GITHUB_CLIENT_ID=${DRONE_GITHUB_CLIENT_ID}"
@@ -90,3 +88,11 @@ services:
     restart: always
     container_name: drone
     image: "drone/drone:1.0.0-rc.5"
+
+volumes:
+  drone_data:
+    driver: local
+  traefik_data:
+    driver: local
+  portainer_data:
+    driver: local

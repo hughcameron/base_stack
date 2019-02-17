@@ -1,6 +1,6 @@
 # Base Stack
 
-Docker compose configuration of containers supporting Airflow Stack
+Docker compose configuration of containers supporting [Airflow Stack](https://github.com/hughcameron/airflow_stack)
 
 ## Traefik Toml
 
