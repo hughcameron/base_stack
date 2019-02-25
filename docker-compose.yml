@@ -26,11 +26,27 @@ services:
   traefik:
     image: traefik:latest
     container_name: traefik
-    command: --api
+    command:
+      - --api
+      - --entrypoints=Name:dashboard Address::8000
+      - --entrypoints=Name:http Address::80 Redirect.EntryPoint:https
+      - --entrypoints=Name:https Address::443 TLS
+      - --defaultentrypoints=https,http
+      - --acme
+      - --acme.storage=/etc/traefik/acme/acme.json
+      - --acme.entryPoint=https
+      - --acme.httpChallenge.entryPoint=http
+      - --acme.onHostRule=true
+      - --acme.email=${EMAIL}
+      - --acme.dnsChallenge
+      - --acme.dnsChallenge.provider=cloudflare
+      - --acme.dnsChallenge.delayBeforeCheck=0
+      - --docker
+      - --docker.domain=${DOMAIN}
+      - --docker.watch
     volumes:
       - ${DOCKER_SOCKET}:/var/run/docker.sock:ro
-      - "traefik_data:/acme.json"
-      - "./traefik.toml:/etc/traefik/traefik.toml"
+      - "traefik_data:/etc/traefik/acme"
     labels:
       traefik.enabled: "true"
       traefik.sub.frontend.rule: "Host:monitor.${DOMAIN}"
@@ -47,7 +63,7 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      - CF_API_EMAIL=${CF_API_EMAIL}
+      - CF_API_EMAIL=${EMAIL}
       - CF_API_KEY=${CF_API_KEY}
     restart: unless-stopped
 
@@ -56,7 +72,7 @@ services:
     environment:
       - ZONE=${DOMAIN}
       - HOST=${DOMAIN}
-      - EMAIL=${CF_API_EMAIL}
+      - EMAIL=${EMAIL}
       - API=${CF_API_KEY}
       - TTL=1
       - PROXY=true
