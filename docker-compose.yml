@@ -8,6 +8,7 @@ services:
   portainer:
     image: portainer/portainer:latest
     container_name: portainer
+    command: --admin-password ${PORTAINER_USERNAME}:${PORTAINER_HTPASSWORD}
     networks:
       - web
     ports:
@@ -51,7 +52,7 @@ services:
       traefik.enabled: "true"
       traefik.sub.frontend.rule: "Host:monitor.${DOMAIN}"
       traefik.backend: "monitor-service"
-      traefik.frontend.auth.basic: "${TRAEFIK_USERNAME}:${TRAEFIK_HTPASSWD}"
+      traefik.frontend.auth.basic: "${TRAEFIK_USERNAME}:${TRAEFIK_HTPASSWORD}"
       traefik.docker.network: "web"
       traefik.port: "8080"
     networks:
